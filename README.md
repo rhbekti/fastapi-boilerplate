@@ -1,76 +1,154 @@
-## PENDAHULUAN
-FastAPI Boilerplate adalah template proyek untuk membangun REST API menggunakan FastAPI dengan struktur yang terorganisir dan scalable. Proyek ini menggunakan uv sebagai package manager dan virtual environment.
+# FastAPI Boilerplate
 
-### Teknologi yang Digunakan
-- FastAPI - Web framework modern untuk Python
-- Pydantic - Data validation menggunakan Python type hints
-- Uvicorn - ASGI server untuk menjalankan aplikasi
-- uv - Package manager dan virtual environment
+Production-ready REST API template built with FastAPI, SQLModel, PostgreSQL, and Alembic. Uses `uv` for package management.
 
-### Setup Virtual Environment
----
-``` bash
-python3 -m venv .venv
-source .venv/bin/activate
+## Tech Stack
+
+| Library | Role |
+|---|---|
+| FastAPI | Web framework |
+| SQLModel | ORM (SQLAlchemy + Pydantic) |
+| PostgreSQL | Database |
+| psycopg (v3) | Async DB driver with connection pool |
+| Alembic | DB migrations |
+| Pydantic Settings | Config from env vars |
+| Uvicorn | ASGI server |
+| uv | Package manager |
+
+## Features
+
+- **Unified response format** — all successful JSON responses auto-wrapped via middleware: `{ success, message, data }`
+- **Global exception handlers** — HTTP, validation, `AlreadyExistsError`, and unhandled exceptions all return consistent JSON
+- **Async DB session** — `psycopg` connection pool + SQLAlchemy async engine, initialized at app lifespan
+- **Modular structure** — each domain (e.g. `user`) owns its router, service, models, and dependencies
+- **Structured logging** — centralized setup via `src/core/logging.py`
+
+## Project Structure
+
+```
+fastapi-boilerplate/
+├── main.py                    # App entry point, lifespan, middleware, routers
+├── alembic.ini                # Alembic config
+├── pyproject.toml             # Project metadata and dependencies
+├── .env                       # Environment variables (not committed)
+├── .env.example               # Env var template
+│
+├── migrations/                # Alembic migration files
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│
+├── src/
+│   ├── core/                  # Shared infrastructure
+│   │   ├── config.py          # App config via pydantic-settings
+│   │   ├── dependencies.py    # DB engine init, session factory, SessionDep
+│   │   ├── exceptions.py      # Custom exceptions + exception handlers
+│   │   ├── logging.py         # Logging setup
+│   │   ├── middlewares.py     # UnifiedResponseMiddleware
+│   │   └── models.py          # IResponse generic response model
+│   │
+│   └── user/                  # User domain module
+│       ├── models.py          # SQLModel table + Pydantic schemas
+│       ├── router.py          # CRUD route handlers
+│       ├── service.py         # Business logic
+│       └── dependencies.py    # UserServiceDep injection
+│
+└── tests/                     # Pytest test files
 ```
 
-### Inisialisasi Projek
----
-```
-uv init
+## Setup
+
+### 1. Clone and install dependencies
+
+```bash
+git clone <repo-url>
+cd fastapi-boilerplate
+uv sync
 ```
 
-### Install Dependencies
----
-```
-# Install FastAPI dengan standard features
-uv add 'fastapi[standard]'
+### 2. Configure environment
 
-# Install dependencies lainnya
-uv add pydantic
-uv add uvicorn
-uv add python-multipart  # Untuk file upload
-uv add python-dotenv     # Untuk environment variables
-
-# Install development dependencies
-uv add --dev pytest
-uv add --dev black
-uv add --dev ruff
-uv add --dev mypy
+```bash
+cp .env.example .env
+# Edit .env — set DATABASE_URL
 ```
 
-### Running Project
+`.env.example`:
 ```
+DATABASE_URL=postgresql://username:password@host:port/db_name
+```
+
+### 3. Run migrations
+
+```bash
+uv run alembic upgrade head
+```
+
+### 4. Run development server
+
+```bash
 uv run fastapi dev
 ```
 
+API docs available at `http://localhost:8000/docs`.
 
-### Project Structure
----
+## API Endpoints
+
+### Users — `/users`
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/users/` | List users (pagination: `offset`, `limit`) |
+| POST | `/users/` | Create user |
+| GET | `/users/{id}` | Get user by ID |
+| PUT | `/users/{id}` | Update user |
+| DELETE | `/users/{id}` | Delete user |
+
+## Response Format
+
+All endpoints return:
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... }
+}
 ```
-/project
-├── .venv/                 # Virtual environment
-├── src/                   # Source code utama
-│   ├── user/              # Module user
-│   │   ├── __init__.py
-│   │   ├── dependencies.py # Dependency injection
-│   │   ├── models.py      # Pydantic models (DTO/Schema)
-│   │   ├── router.py      # Route handlers
-│   │   └── service.py     # Business logic
-│   ├── product/           # Module product
-│   │   ├── __init__.py
-│   │   ├── dependencies.py
-│   │   ├── models.py
-│   │   ├── router.py
-│   │   └── service.py
-│   └── __init__.py
-├── tests/                 # Test files
-│   ├── test_user.py
-│   └── test_product.py
-├── main.py               # Entry point aplikasi
-├── pyproject.toml        # Konfigurasi projek
-├── uv.lock              # Lock file untuk dependencies
-├── .env                  # Environment variables
-├── .gitignore           # Git ignore file
-└── README.md            # Dokumentasi projek
+
+Errors:
+
+```json
+{
+  "success": false,
+  "message": "Error detail",
+  "data": null
+}
+```
+
+## Adding New Modules
+
+1. Create `src/<module>/` with `models.py`, `service.py`, `router.py`, `dependencies.py`
+2. Register router in `main.py`:
+   ```python
+   from src.<module>.router import router as <module>_router
+   app.include_router(<module>_router)
+   ```
+3. Create Alembic migration if new DB table:
+   ```bash
+   uv run alembic revision --autogenerate -m "add <module> table"
+   uv run alembic upgrade head
+   ```
+
+## Development
+
+```bash
+# Add dependency
+uv add <package>
+
+# Add dev dependency
+uv add --dev <package>
+
+# Run tests
+uv run pytest
 ```

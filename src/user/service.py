@@ -1,84 +1,87 @@
 from src.user.models import User, CreateUserRequest, UpdateUserRequest
 from datetime import datetime
-from typing import List, Optional
+from typing import Sequence, Optional
 import uuid
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+from datetime import UTC
+import bcrypt
+from src.core.exceptions import AlreadyExistsError
 
 
 class UserService:
-    def __init__(self):
-        # Initialize with dummy data
-        self._users = [
-            User(
-                id="1",
-                name="John Terry",
-                username="john",
-                email="john@example.com",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            ),
-            User(
-                id="2",
-                name="Jane Doe",
-                username="jane",
-                email="jane@example.com",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            ),
-            User(
-                id="3",
-                name="Bob Smith",
-                username="bob",
-                email="bob@example.com",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-            ),
-        ]
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
-    def findAll(self) -> List[User]:
+    def _hash_password(self, password: str) -> str:
+        """Hash a password using bcrypt"""
+        truncated = password.encode("utf-8")[:72]
+        return bcrypt.hashpw(truncated, bcrypt.gensalt()).decode("utf-8")
+
+    async def find_all(self, offset: int = 0, limit: int = 20) -> Sequence[User]:
         """Get all users"""
-        return self._users.copy()
+        result = await self.session.execute(select(User).offset(offset).limit(limit))
+        return result.scalars().all()
 
-    def findOne(self, id: str) -> Optional[User]:
+    async def find_one(self, user_id: uuid.UUID) -> Optional[User]:
         """Find a user by ID"""
-        for user in self._users:
-            if user.id == id:
-                return user
-        return None
+        return await self.session.get(User, user_id)
 
-    def create(self, data: CreateUserRequest):
-        """Create a new user"""
-        new_user = User(
-            id=str(uuid.uuid4()),  # Generate unique ID
-            name=data.name,
-            username=data.username,
-            email=data.email,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+    async def get_user_by_username(self, username: str) -> Optional[User]:
+        """Get a user by username"""
+        result = await self.session.execute(
+            select(User).where(User.username == username)
         )
-        self._users.append(new_user)
-        return new_user
+        return result.scalar_one_or_none()
 
-    def update(self, id: str, data: UpdateUserRequest) -> Optional[User]:
+    async def create(self, data: CreateUserRequest):
+        """Create a new user"""
+        existing = await self.get_user_by_username(data.username)
+
+        if existing is not None:
+            message = f"User already exists."
+            raise AlreadyExistsError(message)
+
+        hashed_password = self._hash_password(data.password)
+
+        user = User(
+            **data.model_dump(exclude={"password"}),
+            password=hashed_password,
+        )
+
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+
+    async def update(
+        self, user_id: uuid.UUID, data: UpdateUserRequest
+    ) -> Optional[User]:
         """Update an existing user"""
-        user = self.findOne(id)
+        user = await self.session.get(User, user_id)
         if not user:
             return None
 
-        # Update fields if provided
-        if data.name is not None:
-            user.name = data.name
-        if data.username is not None:
-            user.username = data.username
-        if data.email is not None:
-            user.email = data.email
+        if data.password:
+            hashed_password = self._hash_password(data.password)
+            data.password = hashed_password
 
-        user.updated_at = datetime.now()
+        updates = data.model_dump(exclude_unset=True)
+
+        for key, value in updates.items():
+            setattr(user, key, value)
+
+        user.updated_at = datetime.now(UTC)
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
         return user
 
-    def remove(self, id: str) -> bool:
+    async def remove(self, user_id: uuid.UUID) -> bool:
         """Remove a user by ID"""
-        for i, user in enumerate(self._users):
-            if user.id == id:
-                self._users.pop(i)
-                return True
-        return False
+        user = await self.session.get(User, user_id)
+        if not user:
+            return False
+        await self.session.delete(user)
+        await self.session.commit()
+        return True
