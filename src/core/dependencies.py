@@ -72,19 +72,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, Any]:
             await session.close()
 
 
-# engine = create_async_engine(config.db_url, connect_args={"check_same_thread": False})
-# session_local = async_sessionmaker(
-#     autoCommit=False, autoflush=False, bind=engine, class_=AsyncSession
-# )
-
-
-# async def get_session() -> AsyncGenerator[AsyncSession, Any]:
-#     """Get Session Database"""
-#     session = session_local()
-#     try:
-#         yield session
-#     finally:
-#         await session.close()
-
-
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
