@@ -32,6 +32,13 @@ fastapi-boilerplate/
 ├── pyproject.toml             # Project metadata and dependencies
 ├── .env                       # Environment variables (not committed)
 ├── .env.example               # Env var template
+├── .env.docker.example        # Env var template untuk Docker
+├── Dockerfile                 # Multi-stage build (base/dev/prod)
+├── docker-compose.yml         # Base compose (db, migrate, api)
+├── docker-compose.dev.yml     # Override dev (hot-reload, port 8000)
+├── docker-compose.prod.yml    # Override prod (nginx port 80)
+├── nginx/
+│   └── nginx.conf             # Nginx reverse proxy config
 │
 ├── migrations/                # Alembic migration files
 │   ├── env.py
@@ -139,6 +146,75 @@ Errors:
    uv run alembic revision --autogenerate -m "add <module> table"
    uv run alembic upgrade head
    ```
+
+## Docker
+
+Tersedia dua mode: **dev** (hot-reload) dan **prod** (nginx + multi-worker).
+
+### File
+
+| File | Fungsi |
+|---|---|
+| `Dockerfile` | Multi-stage build: `base` → `dev` → `prod` |
+| `docker-compose.yml` | Base shared: `db`, `migrate`, `api` |
+| `docker-compose.dev.yml` | Override dev: hot-reload, expose port `8000` |
+| `docker-compose.prod.yml` | Override prod: target `prod`, tambah nginx port `80` |
+| `nginx/nginx.conf` | Reverse proxy ke `api:8000` |
+| `.env.docker.example` | Template env untuk Docker |
+
+### Setup
+
+```bash
+cp .env.docker.example .env
+# edit .env — isi POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+```
+
+### Menjalankan Dev
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+- API tersedia di `http://localhost:8000`
+- Docs di `http://localhost:8000/docs`
+- Kode di-mount sebagai volume — perubahan file langsung reload tanpa rebuild
+
+### Menjalankan Prod
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+- API tersedia di `http://localhost` (port 80, lewat nginx)
+- Uvicorn jalan dengan `--workers 4`
+- Nginx bertindak sebagai reverse proxy
+
+### Flow Startup
+
+```
+db (postgres healthcheck OK)
+  └─► migrate (alembic upgrade head)
+        └─► api (uvicorn)
+              └─► nginx (prod only, port 80)
+```
+
+Migrasi selalu selesai sebelum API naik. Kalau migrasi gagal, API tidak start.
+
+### Perintah Berguna
+
+```bash
+# Hanya jalankan migration (tanpa naik-in semua service)
+docker compose -f docker-compose.yml run --rm migrate
+
+# Lihat log API
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f api
+
+# Stop semua + hapus volume DB (hati-hati: data hilang)
+docker compose -f docker-compose.yml down -v
+
+# Rebuild image tanpa cache
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache
+```
 
 ## Development
 

@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/app          # hot-reload: mount seluruh kode
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-db_fastapi}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  migrate:
+    build:
+      context: .
+      target: prod   # tetap prod: butuh COPY . . agar alembic.ini tersedia
+    volumes:
+      - .:/app       # mount kode terbaru (migration files)
