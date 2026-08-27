@@ -1,15 +1,19 @@
-from src.user.models import User, CreateUserRequest, UpdateUserRequest
-from datetime import datetime
-from typing import Sequence, Optional
 import uuid
+from collections.abc import Sequence
+from datetime import UTC, datetime
+
+import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
-from datetime import UTC
-import bcrypt
+
 from src.core.exceptions import AlreadyExistsError
+from src.user.models import User
+from src.user.schemas import CreateUser, UpdateUser
 
 
 class UserService:
+    """User Service"""
+
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -21,25 +25,25 @@ class UserService:
     async def find_all(self, offset: int = 0, limit: int = 20) -> Sequence[User]:
         """Get all users"""
         result = await self.session.execute(select(User).offset(offset).limit(limit))
-        return result.scalars().all()
+        return result.scalars().all()  # type: ignore
 
-    async def find_one(self, user_id: uuid.UUID) -> Optional[User]:
+    async def find_one(self, user_id: uuid.UUID) -> User | None:
         """Find a user by ID"""
-        return await self.session.get(User, user_id)
+        return await self.session.get(User, user_id)  # type: ignore
 
-    async def get_user_by_username(self, username: str) -> Optional[User]:
+    async def get_user_by_username(self, username: str) -> User | None:
         """Get a user by username"""
         result = await self.session.execute(
             select(User).where(User.username == username)
         )
         return result.scalar_one_or_none()
 
-    async def create(self, data: CreateUserRequest):
+    async def create(self, data: CreateUser):
         """Create a new user"""
         existing = await self.get_user_by_username(data.username)
 
         if existing is not None:
-            message = f"User already exists."
+            message = "User already exists."
             raise AlreadyExistsError(message)
 
         hashed_password = self._hash_password(data.password)
@@ -54,9 +58,7 @@ class UserService:
         await self.session.refresh(user)
         return user
 
-    async def update(
-        self, user_id: uuid.UUID, data: UpdateUserRequest
-    ) -> Optional[User]:
+    async def update(self, user_id: uuid.UUID, data: UpdateUser) -> User | None:
         """Update an existing user"""
         user = await self.session.get(User, user_id)
         if not user:

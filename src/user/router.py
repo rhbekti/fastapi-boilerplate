@@ -1,9 +1,11 @@
+from collections.abc import Sequence
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, Query
-from typing import Sequence, Optional
-from src.user.models import User, CreateUserRequest, UpdateUserRequest, UserResponse
-from src.user.dependencies import UserServiceDep
-import uuid
+
 from src.core.exceptions import AlreadyExistsError
+from src.user.dependencies import UserServiceDep
+from src.user.schemas import CreateUser, UpdateUser, UserResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -18,15 +20,15 @@ async def find_all(
 
 
 @router.post("/", response_model=UserResponse, status_code=201)
-async def create(payload: CreateUserRequest, service: UserServiceDep):
+async def create(payload: CreateUser, service: UserServiceDep):
     try:
         return await service.create(payload)
     except AlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@router.get("/{id}", response_model=Optional[User])
-async def find_one(id: uuid.UUID, service: UserServiceDep):
+@router.get("/{id}", response_model=UserResponse | None)
+async def find_one(id: UUID, service: UserServiceDep):
     user = await service.find_one(id)
 
     if not user:
@@ -35,8 +37,8 @@ async def find_one(id: uuid.UUID, service: UserServiceDep):
     return user
 
 
-@router.put("/{id}", response_model=Optional[UserResponse])
-async def update(id: uuid.UUID, payload: UpdateUserRequest, service: UserServiceDep):
+@router.put("/{id}", response_model=UserResponse | None)
+async def update(id: UUID, payload: UpdateUser, service: UserServiceDep):
     user = await service.update(id, payload)
 
     if not user:
@@ -46,7 +48,7 @@ async def update(id: uuid.UUID, payload: UpdateUserRequest, service: UserService
 
 
 @router.delete("/{id}", status_code=204)
-async def remove(id: uuid.UUID, service: UserServiceDep):
+async def remove(id: UUID, service: UserServiceDep):
     deleted = await service.remove(id)
 
     if not deleted:

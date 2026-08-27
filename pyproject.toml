@@ -9,10 +9,15 @@ dependencies = [
     "bcrypt>=5.0.0",
     "fastapi[standard]>=0.140.13",
     "greenlet>=3.5.4",
-    "psycopg[binary,pool]>=3.3.4",
+    "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.51",
     "sqlmodel>=0.0.39",
     "uvicorn>=0.51.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.4",
 ]

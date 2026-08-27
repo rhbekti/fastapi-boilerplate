@@ -1,14 +1,15 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
-from src.core.config import config as app_settings
 
-from alembic import context
-from src.user.models import User
+from src.core.config import settings as app_settings
+# from src.role.models import Role
+# from src.user.models import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -25,7 +26,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = SQLModel.metadata
 
-db_url = app_settings.db_url.replace("postgresql://", "postgresql+psycopg://")
+db_url = app_settings.database_url
 config.set_main_option("sqlalchemy.url", db_url)
 
 # other values from the config, defined by the needs of env.py,

@@ -1,33 +1,26 @@
-from typing import Optional
-from datetime import datetime, UTC
-from sqlmodel import SQLModel, Field
+from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
 
-class User(SQLModel, table=True):
-    id: Optional[str] = Field(default_factory=lambda: str(uuid4()), primary_key=True)
-    name: str = Field(default=None, min_length=1, max_length=255)
-    username: str = Field(unique=True, index=True, min_length=1, max_length=255)
-    password: str = Field(default=None, min_length=1, max_length=255)
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC))
+from src.core.dependencies import Base
 
 
-class CreateUserRequest(SQLModel):
-    name: str = Field(default=None, min_length=1, max_length=255)
-    username: str = Field(default=None, min_length=1, max_length=255)
-    password: str = Field(default=None, min_length=1, max_length=255)
+class User(Base):
+    """User Table"""
 
+    __tablename__ = "user"
 
-class UpdateUserRequest(SQLModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    username: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    password: Optional[str] = Field(default=None, min_length=1, max_length=255)
-
-
-class UserResponse(SQLModel):
-    id: str
-    name: str
-    username: str
-    created_at: datetime
-    updated_at: datetime
+    id: Mapped[str] = mapped_column(
+        String(100), default=lambda: str(uuid4()), primary_key=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    password: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

@@ -1,10 +1,11 @@
-from typing import TypeVar, Generic
+from typing import TypeVar
+
 from pydantic import BaseModel
 
 T = TypeVar("T")
 
 
-class IResponse(BaseModel, Generic[T]):
+class IResponse[T](BaseModel):
     """Making Global Response Format"""
 
     success: bool = True

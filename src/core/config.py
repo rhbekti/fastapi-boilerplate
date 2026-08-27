@@ -1,23 +1,34 @@
-import os
-from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
+from pathlib import Path
 
-load_dotenv()
+from pydantic import SecretStr, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
-class Config(BaseSettings):
-    """Base Config Setting"""
-
-    app_name: str = "Fast Api Boilerplate"
-    db_name: str | None = os.getenv("DATABASE_URL")
-
-    db_pool_min_size: int = 1
-    db_pool_max_size: int = 10
-
-    @property
-    def db_url(self) -> str:
-        """return connection string database url."""
-        return f"{self.db_name}"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_PATH = BASE_DIR / ".env"
 
 
-config = Config()
+class Settings(BaseSettings):
+    """Api Base Setting"""
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_PATH,
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+    database_url: str
+    secret_key: SecretStr
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    max_upload_size_bytes: int = 5 * 1024 * 1024
+    reset_token_expire_minutes: int = 60
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _ensure_psycopg(cls, v: str) -> str:
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+psycopg://", 1)
+        return v
+
+
+settings = Settings()  # type: ignore[call-arg] # Loaded from .env file

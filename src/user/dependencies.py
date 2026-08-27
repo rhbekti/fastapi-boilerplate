@@ -1,8 +1,9 @@
 from typing import Annotated
+
 from fastapi import Depends
 
-from src.user.service import UserService
 from src.core.dependencies import SessionDep
+from src.user.service import UserService
 
 
 def get_user_service(session: SessionDep) -> UserService:
