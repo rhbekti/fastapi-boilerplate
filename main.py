@@ -6,6 +6,7 @@ from src.core.dependencies import engine
 from src.core.exceptions import setup_exception_handlers
 from src.core.logging import setup_logging
 from src.core.middlewares import UnifiedResponseMiddleware
+from src.role.router import router as role_router
 from src.user.router import router as user_router
 
 setup_logging()
@@ -24,6 +25,7 @@ setup_exception_handlers(app)
 app.add_middleware(UnifiedResponseMiddleware)
 
 app.include_router(user_router)
+app.include_router(role_router)
 
 
 @app.get("/")
