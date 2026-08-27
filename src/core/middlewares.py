@@ -1,7 +1,8 @@
 import json
+
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.concurrency import iterate_in_threadpool
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.core.models import IResponse
 
@@ -17,7 +18,7 @@ class UnifiedResponseMiddleware(BaseHTTPMiddleware):
         # 2. Only wrap JSON
         content_type = response.headers.get("content-type", "")
         if response.status_code < 400 and "application/json" in content_type:
-            body = b"".join([section async for section in response.body_iterator])
+            body = b"".join([section async for section in response.body_iterator])  # type: ignore
 
             if not body:
                 return response
@@ -45,7 +46,7 @@ class UnifiedResponseMiddleware(BaseHTTPMiddleware):
                     media_type="application/json",
                 )
             except (json.JSONDecodeError, UnicodeDecodeError):
-                response.body_iterator = iterate_in_threadpool(iter([body]))
+                response.body_iterator = iterate_in_threadpool(iter([body]))  # type: ignore
                 return response
 
         return response

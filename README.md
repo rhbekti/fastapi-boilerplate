@@ -141,7 +141,8 @@ Errors:
    from src.<module>.router import router as <module>_router
    app.include_router(<module>_router)
    ```
-3. Create Alembic migration if new DB table:
+3. Add new model to `migrations/env.py`
+4. Create Alembic migration if new DB table:
    ```bash
    uv run alembic revision --autogenerate -m "add <module> table"
    uv run alembic upgrade head

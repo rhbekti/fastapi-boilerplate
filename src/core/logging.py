@@ -1,4 +1,4 @@
-from logging import basicConfig, INFO
+from logging import INFO, basicConfig
 
 
 def setup_logging() -> None:

@@ -7,17 +7,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 from src.core.dependencies import Base
 
 
-class User(Base):
-    """User Table"""
+class Role(Base):
+    """roles table"""
 
-    __tablename__ = "user"
+    __tablename__ = "role"
 
     id: Mapped[str] = mapped_column(
         String(100), default=lambda: str(uuid4()), primary_key=True, index=True
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-    password: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
